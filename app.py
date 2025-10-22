@@ -24,7 +24,7 @@ def search_material(keyword):
         
         print(f"🔍 Tìm kiếm mã: {keyword}")
         
-        # Tìm kiếm THEO MÃ NGUYÊN LIỆU
+        # Tìm kiếm THEO MÃ NGUYÊN LIỆU - CODE ĐÃ SỬA LỖI
         if keyword == "RBF":
             # Tìm tất cả các mã bắt đầu bằng 135114 (cám gạo)
             mask = df['Product Code'].astype(str).str.startswith('135114')
@@ -33,22 +33,19 @@ def search_material(keyword):
         elif keyword == "HELP":
             return """📋 HƯỚNG DẪN:
 • RBF - Xem cám gạo
-• Mã số (135114, 135124,...) - Tìm theo mã
+• Mã số (135114, 135124, 135011,...) - Tìm theo mã
 • TEST - Kiểm tra bot
 • HELP - Hướng dẫn"""
         else:
-            # Tìm theo MÃ chính xác hoặc bắt đầu bằng mã
-            mask = (
-                df['Product Code'].astype(str) == keyword |
-                df['Product Code'].astype(str).str.startswith(keyword)
-            )
+            # Tìm theo MÃ - CODE ĐÃ SỬA LỖI
+            mask = df['Product Code'].astype(str).str.startswith(keyword)
         
         results = df[mask]
         
         if results.empty:
             return f"❌ Không tìm thấy mã '{keyword}'. Thử mã khác hoặc 'HELP'"
         
-        # Format kết quả ĐƠN GIẢN
+        # Format kết quả
         response = f"📦 KẾT QUẢ MÃ: {keyword}\n"
         response += f"📊 Số lượng: {len(results)} kết quả\n\n"
         
@@ -58,14 +55,14 @@ def search_material(keyword):
             response += f"├─ 📍 Vị trí: {row['Location']}\n"
             response += f"├─ 🔒 Lock: {row.get('Lock', 'N/A')}\n"
             response += f"├─ 🔢 Số lượng: {row.get('Quantity', 'N/A')}\n"
-            response += f"├─ ⚖️ KL: {row.get('Weigh', 'N/A')}kg\n"
+            response += f"├─ ⚖️ KL: {row.get('Weight', 'N/A')}kg\n"
             response += f"└─ 📅 Storage: {row.get('Storage Age', 'N/A')} ngày\n\n"
             
         return response
         
     except Exception as e:
         print(f"❌ Lỗi: {str(e)}")
-        return f"⚠️ Lỗi: {str(e)}"
+        return f"⚠️ Lỗi hệ thống. Thử lại sau."
 
 # Webhook handler
 @app.route("/callback", methods=['POST'])
