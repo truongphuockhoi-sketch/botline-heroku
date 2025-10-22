@@ -14,70 +14,58 @@ handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 GOOGLE_SHEETS_URL = "https://docs.google.com/spreadsheets/d/1h4K0_GwNux1XDNJ0lnMhULqxekqjiV8HdUfBrhL3OoQ/gviz/tq?tqx=out:csv&sheet=Sheet1"
 
 def search_material(keyword):
-    """Tìm kiếm nguyên liệu từ Google Sheets"""
+    """Tìm kiếm nguyên liệu theo MÃ"""
     try:
         # Đọc trực tiếp từ Google Sheets
         df = pd.read_csv(GOOGLE_SHEETS_URL)
         
-        # Chuẩn hóa từ khóa - CHẤP NHẬN cả chữ hoa và thường
+        # Chuẩn hóa từ khóa
         keyword = str(keyword).strip().upper()
         
-        print(f"🔍 Tìm kiếm: {keyword}")
-        print(f"📊 Tổng số dòng dữ liệu: {len(df)}")
-        print(f"📋 Các cột có sẵn: {df.columns.tolist()}")
+        print(f"🔍 Tìm kiếm mã: {keyword}")
         
-        # Tìm kiếm thông minh - CHẤP NHẬN NHIỀU DẠNG
-        if keyword in ["RBF", "CÁM", "CÁM GẠO", "CAM", "CAM GAO"]:
-            # Tìm tất cả các loại cám
-            mask = (
-                df['Product Name'].str.contains('cám', case=False, na=False) |
-                df['Product Name'].str.contains('cam', case=False, na=False) |
-                df['Product Name'].str.contains('CÁM', case=False, na=False)
-            )
+        # Tìm kiếm THEO MÃ NGUYÊN LIỆU
+        if keyword == "RBF":
+            # Tìm tất cả các mã bắt đầu bằng 135114 (cám gạo)
+            mask = df['Product Code'].astype(str).str.startswith('135114')
         elif keyword == "TEST":
-            return "✅ Bot hoạt động tốt! Đang đọc từ Google Sheets"
+            return "✅ Bot hoạt động tốt!"
         elif keyword == "HELP":
-            return """📋 HƯỚNG DẪN SỬ DỤNG:
-• RBF, CÁM, CÁM GẠO - Xem tất cả cám gạo
-• Mã số (135114) - Tìm theo mã
-• Tên nguyên liệu - Tìm theo tên
-• Vị trí - Tìm theo kho
+            return """📋 HƯỚNG DẪN:
+• RBF - Xem cám gạo
+• Mã số (135114, 135124,...) - Tìm theo mã
 • TEST - Kiểm tra bot
 • HELP - Hướng dẫn"""
         else:
-            # Tìm theo Product Code, Product Name hoặc Location
+            # Tìm theo MÃ chính xác hoặc bắt đầu bằng mã
             mask = (
-                df['Product Code'].astype(str).str.contains(keyword, case=False, na=False) |
-                df['Product Name'].str.contains(keyword, case=False, na=False) |
-                df['Location'].str.contains(keyword, case=False, na=False)
+                df['Product Code'].astype(str) == keyword |
+                df['Product Code'].astype(str).str.startswith(keyword)
             )
         
         results = df[mask]
         
         if results.empty:
-            return f"❌ Không tìm thấy '{keyword}'. Thử mã khác hoặc 'HELP'"
+            return f"❌ Không tìm thấy mã '{keyword}'. Thử mã khác hoặc 'HELP'"
         
-        # Format kết quả đẹp
-        response = f"📦 KẾT QUẢ: {keyword}\n"
-        response += f"📊 Tìm thấy: {len(results)} kết quả\n\n"
+        # Format kết quả ĐƠN GIẢN
+        response = f"📦 KẾT QUẢ MÃ: {keyword}\n"
+        response += f"📊 Số lượng: {len(results)} kết quả\n\n"
         
-        for i, (_, row) in enumerate(results.head(6).iterrows()):
+        for i, (_, row) in enumerate(results.iterrows()):
             response += f"┌─ 🏷️ Mã: {row['Product Code']}\n"
-            response += f"├─ 📛 Tên: {row['Product Name'][:25]}\n"
+            response += f"├─ 📛 Tên: {row['Product Name'][:30]}\n"
             response += f"├─ 📍 Vị trí: {row['Location']}\n"
             response += f"├─ 🔒 Lock: {row.get('Lock', 'N/A')}\n"
             response += f"├─ 🔢 Số lượng: {row.get('Quantity', 'N/A')}\n"
-            response += f"├─ ⚖️ Trọng lượng: {row.get('Weigh', 'N/A')}kg\n"
-            response += f"└─ 📅 Storage Age: {row.get('Storage Age', 'N/A')} ngày\n\n"
-        
-        if len(results) > 6:
-            response += f"📋 ... và {len(results) - 6} kết quả khác"
+            response += f"├─ ⚖️ KL: {row.get('Weigh', 'N/A')}kg\n"
+            response += f"└─ 📅 Storage: {row.get('Storage Age', 'N/A')} ngày\n\n"
             
         return response
         
     except Exception as e:
         print(f"❌ Lỗi: {str(e)}")
-        return f"⚠️ Lỗi hệ thống: {str(e)}\n📞 Liên hệ IT để được hỗ trợ"
+        return f"⚠️ Lỗi: {str(e)}"
 
 # Webhook handler
 @app.route("/callback", methods=['POST'])
@@ -99,7 +87,7 @@ def handle_message(event):
 
 @app.route("/")
 def home():
-    return "✅ Kho Nguyen Lieu Bot - Google Sheets Version"
+    return "✅ Kho Nguyen Lieu Bot"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
