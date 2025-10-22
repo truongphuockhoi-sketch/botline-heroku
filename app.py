@@ -10,7 +10,7 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv('CHANNEL_ACCESS_TOKEN'))
 handler = WebhookHandler(os.getenv('CHANNEL_SECRET'))
 
-# 🔥 URL GOOGLE SHEETS CỦA BẠN - ĐÃ UPDATE
+# URL Google Sheets của bạn
 GOOGLE_SHEETS_URL = "https://docs.google.com/spreadsheets/d/1h4K0_GwNux1XDNJ0lnMhULqxekqjiV8HdUfBrhL3OoQ/gviz/tq?tqx=out:csv&sheet=Sheet1"
 
 def search_material(keyword):
@@ -19,29 +19,37 @@ def search_material(keyword):
         # Đọc trực tiếp từ Google Sheets
         df = pd.read_csv(GOOGLE_SHEETS_URL)
         
-        # Chuẩn hóa từ khóa
-        keyword = str(keyword).upper().strip()
+        # Chuẩn hóa từ khóa - CHẤP NHẬN cả chữ hoa và thường
+        keyword = str(keyword).strip().upper()
         
         print(f"🔍 Tìm kiếm: {keyword}")
         print(f"📊 Tổng số dòng dữ liệu: {len(df)}")
+        print(f"📋 Các cột có sẵn: {df.columns.tolist()}")
         
-        # Tìm kiếm thông minh
-        if keyword == "RBF":
-            mask = df['Product Name'].str.contains('CÁM GẠO', case=False, na=False)
+        # Tìm kiếm thông minh - CHẤP NHẬN NHIỀU DẠNG
+        if keyword in ["RBF", "CÁM", "CÁM GẠO", "CAM", "CAM GAO"]:
+            # Tìm tất cả các loại cám
+            mask = (
+                df['Product Name'].str.contains('cám', case=False, na=False) |
+                df['Product Name'].str.contains('cam', case=False, na=False) |
+                df['Product Name'].str.contains('CÁM', case=False, na=False)
+            )
         elif keyword == "TEST":
             return "✅ Bot hoạt động tốt! Đang đọc từ Google Sheets"
         elif keyword == "HELP":
             return """📋 HƯỚNG DẪN SỬ DỤNG:
-• RBF - Xem cám gạo
+• RBF, CÁM, CÁM GẠO - Xem tất cả cám gạo
 • Mã số (135114) - Tìm theo mã
 • Tên nguyên liệu - Tìm theo tên
 • Vị trí - Tìm theo kho
-• TEST - Kiểm tra bot"""
+• TEST - Kiểm tra bot
+• HELP - Hướng dẫn"""
         else:
+            # Tìm theo Product Code, Product Name hoặc Location
             mask = (
-                df['Product Code'].astype(str).str.contains(keyword, na=False) |
-                df['Product Name'].str.upper().str.contains(keyword, na=False) |
-                df['Location'].str.upper().str.contains(keyword, na=False)
+                df['Product Code'].astype(str).str.contains(keyword, case=False, na=False) |
+                df['Product Name'].str.contains(keyword, case=False, na=False) |
+                df['Location'].str.contains(keyword, case=False, na=False)
             )
         
         results = df[mask]
@@ -53,17 +61,17 @@ def search_material(keyword):
         response = f"📦 KẾT QUẢ: {keyword}\n"
         response += f"📊 Tìm thấy: {len(results)} kết quả\n\n"
         
-        for i, (_, row) in enumerate(results.head(5).iterrows()):
+        for i, (_, row) in enumerate(results.head(6).iterrows()):
             response += f"┌─ 🏷️ Mã: {row['Product Code']}\n"
-            response += f"├─ 📛 Tên: {row['Product Name'][:20]}...\n"
+            response += f"├─ 📛 Tên: {row['Product Name'][:25]}\n"
             response += f"├─ 📍 Vị trí: {row['Location']}\n"
-            response += f"├─ 🔢 Số lượng: {row['Quantity']}\n"
-            response += f"├─ ⚖️ Trọng lượng: {row['Weigh']}kg\n"
-            response += f"├─ 📅 Tuổi kho: {row['RECEIVE_LIFE _AGE']} ngày\n"
-            response += f"└─ ⏳ Shelf Life: {row.get('SHELF LIFE (DAYS)', 'N/A')} ngày\n\n"
+            response += f"├─ 🔒 Lock: {row.get('Lock', 'N/A')}\n"
+            response += f"├─ 🔢 Số lượng: {row.get('Quantity', 'N/A')}\n"
+            response += f"├─ ⚖️ Trọng lượng: {row.get('Weigh', 'N/A')}kg\n"
+            response += f"└─ 📅 Storage Age: {row.get('Storage Age', 'N/A')} ngày\n\n"
         
-        if len(results) > 5:
-            response += f"📋 ... và {len(results) - 5} kết quả khác"
+        if len(results) > 6:
+            response += f"📋 ... và {len(results) - 6} kết quả khác"
             
         return response
         
